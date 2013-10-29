@@ -4,7 +4,8 @@
     <title>{{title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Bootstrap -->
-    <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="http://v2.bootcss.com/assets/css/bootstrap.css" rel="stylesheet" media="screen">
+    <link href="http://v2.bootcss.com/assets/css/bootstrap-responsive.css" rel="stylesheet" media="screen">
 
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -15,12 +16,39 @@
 
    <style type="text/css">
        body { padding-left: 70px; }
+       .project_name {border: none !important; background: none !important;}
+       .edit {border: 1px solid blueviolet; background: #ffffff;}
    </style>
   </head>
   <body>
-    <h1>{{title}}   <a class="btn btn-primary btn-m" role="button">+新建</a></h1>
+    <h1>{{title}}</h1>
 
-    <table class="table">
+    <div class="container-fluid">
+        <div class="row-fluid">
+            <div class="span12">
+                <a id="modal-61809" href="#modal-container-61809" role="button" class="btn" data-toggle="modal">+新建</a>
+
+                <div id="modal-container-61809" class="modal hide fade" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                        <h3 id="myModalLabel">
+                            新建项目
+                        </h3>
+                    </div>
+                    <div class="modal-body">
+                        <p>
+                            <input type="text" name="proj_name" id="proj_name" />
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn" data-dismiss="modal" aria-hidden="true">关闭</button> <button class="btn btn-primary" id="save_btn">保存设置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table" id="table">
         <thead>
           <tr>
             <th>pid</th>
@@ -31,9 +59,11 @@
         <tbody>
         {% for item in projects %}
           <tr{% if item[2]==1 %} class='success' {% end %}>
-            <td>{{ item[0] }}</td>
-            <td>{{ item[1] }}</td>
-            <td><button data='{{ item[2] }}' class="enable_btn btn {% if item[2]==0%} btn-danger">NO {% else %} btn-success">YES {% end if%}</button></td>
+            <td width="30%">{{ item[0] }}</td>
+            <td width="40%"><input type="text" value="{{ item[1] }}" data="{{ item[0] }}"  class="project_name"/></td>
+            <td width="30%" class="operate"><button data='{{ item[0] }}' class="enable_btn btn {% if item[2]==0%} btn-info" name="info">NO {% else %} btn-success">YES {% end if%}</button>
+                <button data='{{ item[0] }}' name="delete" class="enable_btn btn btn-danger">delete</button>
+            </td>
           </tr>
         {% end %}
         </tbody>
@@ -43,5 +73,95 @@
     <script src="/static/js/jquery-1.10.2.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="/static/js/bootstrap.min.js"></script>
+    <script type="text/javascript">
+        function sendRemote(_id,_name){
+            $.ajax({
+                type: "PUT",
+                url: "/ph/"+ _id,
+                data: "name="+ _name,
+                success:function(json){
+                    document.location.reload();
+                },
+                error: function(json){
+                    alert(json.msg);
+                }
+            })
+        }
+        function create_new(){
+            var _name = $("#proj_name").val();
+            if (!_name) return;
+            $.ajax({
+                type: "POST",
+                url: "/ph",
+                data: "name="+ _name,
+                success:function(json){
+                    document.location.reload();
+                },
+                error: function(json){
+                    alert(json.msg);
+                }
+            });
+        }
+        $(document).ready(function(){
+            //edit
+            $(".project_name").click(function(){
+                this.removeAttribute("class");
+                this.setAttribute("class","edit");
+
+            }).blur(function(){
+                this.setAttribute("class","project_name");
+                sendRemote(this.getAttribute("data"),this.value);
+            }).keydown(function(e){
+                if(e.keyCode == 13) {
+                    this.setAttribute("class","project_name");
+                    sendRemote(this.getAttribute("data"),this.value);
+                    this.blur();
+                    return false;
+                }
+            });
+
+            //create new
+            $("#save_btn").click(function(){
+                create_new();
+            });
+            $("#proj_name").keydown(function(e){
+                if(e.keyCode == 13) {
+                    create_new();
+                    return false;
+                }
+            });
+
+            //active
+            $(".operate button[name=info]").click(function(){
+                $.ajax({
+                    type: "PATCH",
+                    url: "/ph/"+ this.getAttribute("data"),
+                    data: null,
+                    success:function(json){
+                        document.location.reload();
+                    },
+                    error: function(json){
+                        alert(json.msg);
+                    }
+                });
+            });
+
+            //delete
+            $(".operate button[name=delete]").click(function(){
+                $.ajax({
+                    type: "DELETE",
+                    url: "/ph/"+ this.getAttribute("data"),
+                    data: null,
+                    success:function(json){
+                        document.location.reload();
+                    },
+                    error: function(json){
+                        alert(json.msg);
+                    }
+                });
+            });
+        });
+
+    </script>
   </body>
 </html>
