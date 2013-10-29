@@ -30,7 +30,10 @@ METHODS = {"get": 0, "post": 1, "put": 2, "patch": 3, "delete": 4, "copy": 5,
 
 
 class ProjectHandler(tornado.web.RequestHandler):
-    def get(self, *args):
+    """
+        /ph
+    """
+    def get(self):
         #项目列表
         pids = _execute("select * from projects")
         self.render('projects.html', projects=pids, title="项目管理页面")
@@ -40,7 +43,7 @@ class ProjectHandler(tornado.web.RequestHandler):
         _execute('''update projects set active=? where active=?''', (0, 1))
 
 
-    def post(self, *args):
+    def post(self):
         #添加项目
         project_name = self.get_argument("name", "未命名项目")
         self._clear_active()
@@ -48,47 +51,48 @@ class ProjectHandler(tornado.web.RequestHandler):
 
         self.write({"error": 0, "msg": "ok"})
 
-    def put(self, *args):
-        #修改项目
-        project_name = self.get_argument("name", "未命名项目")
-        pid = int(self.get_argument("pid", None) or 0)
-        _execute('''update projects  set name='%s' where pid=%d ''' % (project_name, pid))
-        self.write({"error": 0, "msg": "ok"})
 
-    def delete(self, path_string):
+class ProjectPlusHandler(tornado.web.RequestHandler):
+    """
+        /ph/pid
+    """
+    def _clear_active(self):
+        #清除所有活动的项目
+        _execute('''update projects set active=? where active=?''', (0, 1))
+
+    def delete(self, pid):
         #删除项目
-        pid = int(path_string[3:])
         if not bool(pid):
             return self.write({"error": 1, "msg": "missing pid"})
         pid = int(pid)
         _execute('''delete from projects where pid=%d ''' % pid)
         self.write({"error": 0, "msg": "ok"})
 
-    def patch(self, path_string):
+    def patch(self, pid):
         #激活项目
-        pid = int(path_string[3:])
         self._clear_active()
         _execute('''update projects set active=? where pid=?''', (1, pid))
         ACTIVE_PID = pid
         self.write({"error": 0, "msg": "ok"})
 
+    def put(self, pid):
+        #修改项目
+        project_name = self.get_argument("name", "未命名项目")
+        _execute('''update projects  set name=? where pid=?''', (project_name, int(pid)))
+        self.write({"error": 0, "msg": "ok"})
+
+
 class ApiHandler(tornado.web.RequestHandler):
+    """
+        /ah/pid
+    """
+    def get(self, pid):
+        #apis列表
+        apis = _execute("select * from apis where pid=%s" % (pid))
+        self.render('apis.html', apis=apis, title="API管理页面")
 
-    def get(self, pid, *args):
-        #apis列表|单独获取某个api
-        if "/" in pid:
-            pid, aid = pid.split("/")
-            api = _execute("select * from apis where pid=%s and id=%s" % (pid, aid))
-            print api
-            self.render('api.html', api=api, title="查看API页面")
-        else:
-            apis = _execute("select * from apis where pid=%s" % (pid))
-            self.render('apis.html', apis=apis, title="API管理页面")
-
-    def post(self, pid, *args):
+    def post(self, pid):
         #添加API
-        pid = pid[:pid.index("/")] if "/" in pid else pid
-
         api_name = self.get_argument("name", "未命名接口")
         method = METHODS.get(self.get_argument("method", "get").lower(), 0)
         handler = self.get_argument("handler", "")
@@ -101,12 +105,17 @@ class ApiHandler(tornado.web.RequestHandler):
         else:
             return self.write({"error": 1, "msg": "already exists"})
 
-    def put(self, pid, *args):
-        #修改API
-        if "/" not in pid:
-            return self.write({"error": 1, "msg": "argument error"})
+class ApiPlusHandler(tornado.web.RequestHandler):
+    """
+        /ah/pid/aid
+    """
+    def get(self, pid, aid):
+        #单独获取某个api
+        api = _execute("select * from apis where pid=%s and id=%s" % (pid, aid))
+        self.render('api.html', api=api, title="查看API页面")
 
-        pid, aid = pid.split("/")
+    def put(self, pid, aid):
+        #修改API
         api_name = self.get_argument("name", "未命名接口")
         method = METHODS.get(self.get_argument("method", "get").lower(), 0)
         handler = self.get_argument("handler", "")
@@ -120,15 +129,14 @@ class ApiHandler(tornado.web.RequestHandler):
                  (api_name, method, data, handler, int(pid), int(aid)))
         self.write({"error": 0, "msg": "ok"})
 
-
-    def delete(self, pid_string, *args):
+    def delete(self, pid, aid):
         #删除API
-        pid, aid = pid_string.split("/")
         if bool(pid) and bool(aid):
             _execute('''delete from projects where pid=? and id=?''', (int(pid), int(aid)))
             self.write({"error": 0, "msg": "ok"})
         else:
             return self.write({"error": 1, "msg": "missing pid or aid"})
+
 
 class Main(tornado.web.RequestHandler):
     def get(self):
