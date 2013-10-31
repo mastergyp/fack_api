@@ -88,8 +88,9 @@ class ApiHandler(tornado.web.RequestHandler):
     """
     def get(self, pid):
         #apis列表
-        apis = _execute("select * from apis where pid=%s" % (pid))
-        self.render('apis.html', apis=apis, title="API管理页面")
+        apis = _execute("select * from apis where pid=?", pid)
+        self.render('apis.html', apis=apis, title="API管理页面",
+                    maps=dict(map(lambda t: (t[1], t[0].upper()), METHODS.items())))
 
     def post(self, pid):
         #添加API
@@ -104,6 +105,7 @@ class ApiHandler(tornado.web.RequestHandler):
             self.write({"error": 0, "msg": "ok"})
         else:
             return self.write({"error": 1, "msg": "already exists"})
+
 
 class ApiPlusHandler(tornado.web.RequestHandler):
     """
@@ -120,8 +122,8 @@ class ApiPlusHandler(tornado.web.RequestHandler):
         method = METHODS.get(self.get_argument("method", "get").lower(), 0)
         handler = self.get_argument("handler", "")
         data = self.get_argument("data", "{'foo': 'bar'}")
-
-        exist = _execute('''select * from apis where pid=? and method=? and handler=?''', (int(pid), method, handler))
+        exist = _execute('''select * from apis where pid=? and method=? and handler=? and id <> ?''',
+                         (int(pid), method, handler, int(aid)))
         if bool(exist) and exist[0][0] != int(aid):
             return self.write({"error": 1, "msg": "already exists"})
 
@@ -132,7 +134,7 @@ class ApiPlusHandler(tornado.web.RequestHandler):
     def delete(self, pid, aid):
         #删除API
         if bool(pid) and bool(aid):
-            _execute('''delete from projects where pid=? and id=?''', (int(pid), int(aid)))
+            _execute('''delete from apis where pid=? and id=?''', (int(pid), int(aid)))
             self.write({"error": 0, "msg": "ok"})
         else:
             return self.write({"error": 1, "msg": "missing pid or aid"})
@@ -141,8 +143,9 @@ class ApiPlusHandler(tornado.web.RequestHandler):
 class Main(tornado.web.RequestHandler):
     def get(self):
         parse_result = urlparse.urlparse(self.request.uri)
-        method = METHODS.get(self.request.method.lower(),None)
+        method = METHODS.get(self.request.method.lower(), None)
         handler = parse_result.path[1:]
+        print ACTIVE_PID, handler, method
         result = _execute('''select data from apis where pid=? and handler=? and method=?''',
                           (ACTIVE_PID, handler, method))
         if bool(result):

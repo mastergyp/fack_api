@@ -59,7 +59,7 @@
         <tbody>
         {% for item in projects %}
           <tr{% if item[2]==1 %} class='success' {% end %}>
-            <td width="30%">{{ item[0] }}</td>
+            <td width="30%"><a href="/ah/{{ item[0] }}">{{ item[0] }}</a></td>
             <td width="40%"><input type="text" value="{{ item[1] }}" data="{{ item[0] }}"  class="project_name"/></td>
             <td width="30%" class="operate"><button data='{{ item[0] }}' class="enable_btn btn {% if item[2]==0%} btn-info" name="info">NO {% else %} btn-success">YES {% end if%}</button>
                 <button data='{{ item[0] }}' name="delete" class="enable_btn btn btn-danger">delete</button>
@@ -115,7 +115,6 @@
                 if(e.keyCode == 13) {
                     this.setAttribute("class","project_name");
                     sendRemote(this.getAttribute("data"),this.value);
-                    this.blur();
                     return false;
                 }
             });
